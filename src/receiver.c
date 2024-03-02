@@ -13,7 +13,6 @@
 
 #define BUFFER_SIZE 1024 // Adjust based on expected MTU
 
-
 // void rrecv(unsigned short int myUDPport, 
 //             char* destinationFile, 
 //             unsigned long long int writeRate) {
@@ -37,13 +36,11 @@
 // }
 
 void rrecv(unsigned short int myUDPport, char* destinationFile, unsigned long long int writeRate) {
-
-    (void)writeRate;
-
     int sockfd;
     struct sockaddr_in servaddr, cliaddr;
     char buffer[BUFFER_SIZE];
     FILE *fp;
+    struct timespec sleepDuration = {0, 0};
 
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (sockfd < 0) {
@@ -67,23 +64,38 @@ void rrecv(unsigned short int myUDPport, char* destinationFile, unsigned long lo
         exit(EXIT_FAILURE);
     }
 
-    printf("Receiver is listening on port %hu\n", myUDPport);
-
-    socklen_t len = sizeof(cliaddr);
-    int n;
-    while ((n = recvfrom(sockfd, buffer, BUFFER_SIZE, 0, (struct sockaddr *) &cliaddr, &len)) > 0) {
-        fwrite(buffer, 1, n, fp);
-        printf("wrote...");
+    // Calculate sleep duration if writeRate is specified
+    if (writeRate > 0) {
+        double bytesPerNanoSecond = writeRate / 1000000000.0;
+        sleepDuration.tv_nsec = (long)(BUFFER_SIZE / bytesPerNanoSecond);
     }
 
-    if (n < 0) {
-        perror("recvfrom failed");
+    socklen_t len = sizeof(cliaddr);
+    ssize_t n;
+
+    printf("Start receiving...\n");
+
+    while ((n = recvfrom(sockfd, buffer, BUFFER_SIZE, 0, (struct sockaddr *) &cliaddr, &len)) > 0) {
+
+        printf("Received %zd bytes, writing...\n", n);
+
+        size_t written = fwrite(buffer, 1, n, fp);
+        if (written < n) {
+            perror("Failed to write to file");
+            break; // Or handle the error appropriately
+        }
+        fflush(fp);
+
+        // Implement write rate control
+        if (writeRate > 0) {
+            nanosleep(&sleepDuration, NULL);
+        }
     }
 
     fclose(fp);
     close(sockfd);
 
-    printf("Receiver terminated\n");
+    printf("END\n");
 
 }
 

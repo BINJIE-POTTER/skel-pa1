@@ -11,8 +11,7 @@
 #include <pthread.h>
 #include <errno.h>
 
-#define BUFFER_SIZE 65536 // Adjust based on expected MTU
-
+#define BUFFER_SIZE 1024 // Adjust based on expected MTU
 
 // void rsend(char* hostname, 
 //             unsigned short int hostUDPport, 

@@ -12,12 +12,22 @@
 #include <errno.h>
 
 #define BUFFER_SIZE 1024 // Adjust based on expected MTU
+#define PACKET_DATA_SIZE (BUFFER_SIZE - sizeof(unsigned int))
+
+typedef struct {
+    unsigned int index;
+    char data[BUFFER_SIZE];
+} Packet;
+
+typedef struct {
+    unsigned int index; // -1 means heading package
+    size_t packetNum; // Total number of packets
+} InfoPacket;
 
 void rrecv(unsigned short int myUDPport, char* destinationFile, unsigned long long int writeRate) {
     
     int sockfd;
     struct sockaddr_in servaddr, cliaddr;
-    char buffer[BUFFER_SIZE];
     FILE *fp;
     struct timespec sleepDuration = {0, 0};
 
@@ -27,7 +37,7 @@ void rrecv(unsigned short int myUDPport, char* destinationFile, unsigned long lo
         exit(EXIT_FAILURE);
     }
 
-    int bufferSize = 2 * 1024 * 1024; // Example: set buffer to 2 MB
+    int bufferSize = 2 * 1024 * 1024;
     setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &bufferSize, sizeof(bufferSize));
 
     memset(&servaddr, 0, sizeof(servaddr));
@@ -52,14 +62,36 @@ void rrecv(unsigned short int myUDPport, char* destinationFile, unsigned long lo
         sleepDuration.tv_nsec = (long)(BUFFER_SIZE / bytesPerNanoSecond);
     }
 
-    unsigned long long int receivedBytes = 0; // Track received bytes
-    size_t packetsReceived = 0; // For diagnostic
-
+    InfoPacket infoPacket;
     socklen_t len = sizeof(cliaddr);
     ssize_t n;
+    size_t packetsLength = 0;
     while (1) {
 
-        n = recvfrom(sockfd, buffer, BUFFER_SIZE, 0, (struct sockaddr *) &cliaddr, &len);
+        n = recvfrom(sockfd, &infoPacket, sizeof(infoPacket), 0, (struct sockaddr *) &cliaddr, &len);
+        if (n == -1) {
+            perror("recvfrom failed");
+            break;
+        }
+
+        if (infoPacket.index == -1) {
+
+            packetsLength = infoPacket.packetNum;
+
+            break;
+
+        }
+
+    }
+
+    printf("Total Packets: %zu\n", packetsLength);
+
+    unsigned long long int receivedBytes = 0; // Track received bytes
+    size_t packetsReceived = 0;
+    Packet packet;
+    while (packetsReceived != packetsLength) {
+
+        n = recvfrom(sockfd, &packet, sizeof(packet), 0, (struct sockaddr *) &cliaddr, &len);
 
         if (n == -1) {
             perror("recvfrom failed");
@@ -69,17 +101,33 @@ void rrecv(unsigned short int myUDPport, char* destinationFile, unsigned long lo
             break;
         }
 
-        packetsReceived++;
-        receivedBytes += n;
+        if (packet.index != -1) {
 
-        if (fwrite(buffer, 1, n, fp) != n) {
-            perror("Failed to write to file");
-            break;
-        }
-        fflush(fp);
+            packetsReceived++;
+            receivedBytes += n;
 
-        if (writeRate > 0) {
-            nanosleep(&sleepDuration, NULL);
+            off_t position = (off_t)packet.index * PACKET_DATA_SIZE;
+            if (fseek(fp, position, SEEK_SET) != 0) {
+                perror("Failed to seek in file");
+                break;
+            }
+
+            if (fwrite(packet.data, 1, n - sizeof(packet.index), fp) != n - sizeof(packet.index)) {
+                perror("Failed to write to file");
+                break;
+            }
+            fflush(fp);
+
+            unsigned int ack = packet.index;
+            if (sendto(sockfd, &ack, sizeof(ack), 0, (struct sockaddr *)&cliaddr, len) < 0) {
+                perror("sendto failed");
+                break;
+            }
+
+            if (writeRate > 0) {
+                nanosleep(&sleepDuration, NULL);
+            }
+
         }
 
     }

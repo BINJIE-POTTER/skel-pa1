@@ -12,7 +12,35 @@
 #include <pthread.h>
 #include <errno.h>
 
-#define BUFFER_SIZE 1024 // Adjust based on expected MTU
+#include <math.h>
+#include <stdbool.h>
+
+#define BUFFER_SIZE 1024
+
+typedef struct {
+    char* hostname;
+    unsigned short int hostUDPport;
+    char* filename;
+    unsigned long long int bytesToTransfer;
+} RSendArgs;
+
+typedef struct {
+    unsigned short int hostUDPport;
+} RRecvACKArgs;
+
+typedef struct {
+    unsigned int index;
+    char data[BUFFER_SIZE];
+} Packet;
+
+typedef struct {
+    unsigned int index; // -1 means control package
+    size_t packetNum; // Total number of packets
+} InfoPacket;
+
+pthread_mutex_t lock;
+bool *array;
+size_t ARRAY_SIZE;
 
 char* 
 getIPv4(char* hostname) {
@@ -48,14 +76,78 @@ getIPv4(char* hostname) {
 
 }
 
+void*
+rrecvACK(void* args) {
+
+    RRecvACKArgs* recvArgs = (RRecvACKArgs*)args;
+    unsigned short int hostUDPport = recvArgs->hostUDPport;
+
+    int sockfd;
+    struct sockaddr_in recvaddr, senderaddr;
+    socklen_t senderaddrlen = sizeof(senderaddr);
+    unsigned int ack;
+
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd < 0) {
+        perror("socket creation failed");
+        exit(EXIT_FAILURE);
+    }
+
+    int bufferSize = 2 * 1024 * 1024;
+    setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &bufferSize, sizeof(bufferSize));
+
+    memset(&recvaddr, 0, sizeof(recvaddr));
+    recvaddr.sin_family = AF_INET;
+    recvaddr.sin_addr.s_addr = INADDR_ANY;
+    recvaddr.sin_port = htons(hostUDPport);
+
+    if (bind(sockfd, (const struct sockaddr *)&recvaddr, sizeof(recvaddr)) < 0) {
+        perror("bind failed");
+        exit(EXIT_FAILURE);
+    }
+
+    bool allAcknowledged = false;
+    ssize_t n;
+    while (!allAcknowledged) {
+
+        n = recvfrom(sockfd, &ack, sizeof(ack), 0, (struct sockaddr *)&senderaddr, &senderaddrlen);
+        if (n < 0) {
+            perror("recvfrom failed");
+            exit(EXIT_FAILURE);
+        }
+
+        pthread_mutex_lock(&lock);
+
+        array[ack] = true;
+
+        pthread_mutex_unlock(&lock);
+
+        allAcknowledged = true;
+
+        for (int i = 0; i < ARRAY_SIZE; ++i) {
+            if (array[i] == false) {
+                allAcknowledged = false;
+                break;
+            }
+        }
+
+    }
+
+    close(sockfd);
+
+    return NULL;
+
+}
+
+
 void 
 rsend(char* hostname, unsigned short int hostUDPport, char* filename, unsigned long long int bytesToTransfer) {
     
     int sockfd;
     struct sockaddr_in servaddr;
     FILE *fp;
-    char buffer[BUFFER_SIZE];
     char* ipv4;
+    ssize_t sent;
 
     printf("Hostname: %s\n", hostname);
     printf("UDP Port: %hu\n", hostUDPport);
@@ -68,7 +160,7 @@ rsend(char* hostname, unsigned short int hostUDPport, char* filename, unsigned l
         exit(EXIT_FAILURE);
     }
 
-    int bufferSize = 2 * 1024 * 1024; // Example: set buffer to 2 MB
+    int bufferSize = 2 * 1024 * 1024;
     setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &bufferSize, sizeof(bufferSize));
 
     memset(&servaddr, 0, sizeof(servaddr));
@@ -88,6 +180,19 @@ rsend(char* hostname, unsigned short int hostUDPport, char* filename, unsigned l
         exit(EXIT_FAILURE);
     }
 
+    InfoPacket infoPacket;
+    infoPacket.index = -1;
+    infoPacket.packetNum = (size_t) ceil((double)bytesToTransfer / BUFFER_SIZE);
+    for (int i = 0; i < 20; i++) {
+
+        sent = sendto(sockfd, &infoPacket, sizeof(infoPacket), 0, (const struct sockaddr *) &servaddr, sizeof(servaddr));
+        if (sent < 0) {
+            perror("Failed to send file");
+            break;
+        } 
+
+    }
+
     fp = fopen(filename, "rb");
     if (fp == NULL) {
         perror("Failed to open file");
@@ -96,30 +201,60 @@ rsend(char* hostname, unsigned short int hostUDPport, char* filename, unsigned l
 
     printf("Succeed to open the file!\n");
 
-    size_t packetsSent = 0; // For diagnostic
+    bool allAcknowledged = false;
+    while (!allAcknowledged) {
 
-    unsigned long long int sentBytes = 0;
-    while (sentBytes < bytesToTransfer && fread(buffer, 1, BUFFER_SIZE, fp) > 0) {
+        for (unsigned int index = 0; index < ARRAY_SIZE; ++index) {
 
-        ssize_t toSend = (bytesToTransfer - sentBytes < BUFFER_SIZE) ? bytesToTransfer - sentBytes : BUFFER_SIZE;
+            pthread_mutex_lock(&lock);
 
-        ssize_t sent = sendto(sockfd, buffer, toSend, 0, (const struct sockaddr *) &servaddr, sizeof(servaddr));
-        if (sent < 0) {
-            perror("Failed to send file");
-            break;
-        } 
-        
-        sentBytes += sent;
-        packetsSent++;
+            if (!array[index]) {
+
+                Packet packet;
+                packet.index = index;
+
+                off_t position = (off_t)index * BUFFER_SIZE;
+                fseek(fp, position, SEEK_SET);
+
+                if (fread(packet.data, 1, BUFFER_SIZE, fp) <= 0) {
+                    perror("Failed to read file");
+                    break;
+                }
+
+                sent = sendto(sockfd, &packet, sizeof(packet), 0, (const struct sockaddr *) &servaddr, sizeof(servaddr));
+                if (sent < 0) {
+                    perror("Failed to send file");
+                    break;
+                }
+
+            }
+
+            pthread_mutex_unlock(&lock);
+
+        }
+
+        allAcknowledged = true;
+
+        for (int i = 0; i < ARRAY_SIZE; ++i) {
+            if (array[i] == false) {
+                allAcknowledged = false;
+                break;
+            }
+        }
 
     }
 
-    for(int i = 0; i < 10; i++) sendto(sockfd, NULL, 0, 0, (const struct sockaddr *) &servaddr, sizeof(servaddr));
-
-    printf("Packets sent: %zu\n", packetsSent);
-
     fclose(fp);
     close(sockfd);
+
+}
+
+void* 
+rsendHelper(void* args) {
+
+    RSendArgs* sendArgs = (RSendArgs*)args;
+    rsend(sendArgs->hostname, sendArgs->hostUDPport, sendArgs->filename, sendArgs->bytesToTransfer);
+    return NULL;
 
 }
 
@@ -131,14 +266,38 @@ main(int argc, char** argv) {
         return 1;
     }
 
-    char* hostname = argv[1];
-    unsigned short int hostUDPport = (unsigned short int)atoi(argv[2]);
-    char* filename = argv[3];
-    unsigned long long int bytesToTransfer = atoll(argv[4]);
+    pthread_mutex_init(&lock, NULL);
 
-    rsend(hostname, hostUDPport, filename, bytesToTransfer);
+    ARRAY_SIZE = (size_t) ceil((double)atoi(argv[2]) / BUFFER_SIZE);
+    array = malloc(ARRAY_SIZE * sizeof(bool));
+    if (array == NULL) {
+        fprintf(stderr, "Failed to allocate memory for the array.\n");
+        return EXIT_FAILURE;
+    }
+    for (int i = 0; i < ARRAY_SIZE; ++i) {
+        array[i] = false;
+    }
+
+    RSendArgs sendArgs = {
+        .hostname = argv[1],
+        .hostUDPport = (unsigned short int)atoi(argv[2]),
+        .filename = argv[3],
+        .bytesToTransfer = atoll(argv[4])
+    };
+
+    RRecvACKArgs recvACKArgs = { .hostUDPport = (unsigned short int)atoi(argv[2]) };
+
+    pthread_t sendThread, recvACKThread;
+    pthread_create(&sendThread, NULL, rsendHelper, &sendArgs);
+    pthread_create(&recvACKThread, NULL, rrecvACK, &recvACKArgs);
+
+    pthread_join(sendThread, NULL);
+    pthread_join(recvACKThread, NULL);
 
     printf("MAIN END\n");
+
+    free(array);
+    pthread_mutex_destroy(&lock);
 
     return 0;
 }

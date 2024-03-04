@@ -114,7 +114,7 @@ rsend(char* hostname, unsigned short int hostUDPport, char* filename, unsigned l
 
     }
 
-    sendto(sockfd, NULL, 0, 0, (const struct sockaddr *) &servaddr, sizeof(servaddr));
+    for(int i = 0; i < 10; i++) sendto(sockfd, NULL, 0, 0, (const struct sockaddr *) &servaddr, sizeof(servaddr));
 
     printf("Packets sent: %zu\n", packetsSent);
 

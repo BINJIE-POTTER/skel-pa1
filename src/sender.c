@@ -53,7 +53,6 @@ void rsend(char* hostname, unsigned short int hostUDPport, char* filename, unsig
 
     printf("Succeed to open the file!\n");
 
-    unsigned long long int sentBytes = 0;
     size_t packetsSent = 0; // For diagnostic
 
     unsigned long long int sentBytes = 0;

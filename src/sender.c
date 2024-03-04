@@ -19,6 +19,10 @@ void rsend(char* hostname, unsigned short int hostUDPport, char* filename, unsig
     struct sockaddr_in servaddr;
     FILE *fp;
     char buffer[BUFFER_SIZE];
+    struct timespec req = {0}; // For introducing delay
+    
+    req.tv_sec = 0;
+    req.tv_nsec = 10 * 1000000L; // 10 milliseconds delay
 
     printf("Hostname: %s\n", hostname);
     printf("UDP Port: %hu\n", hostUDPport);
@@ -50,6 +54,9 @@ void rsend(char* hostname, unsigned short int hostUDPport, char* filename, unsig
     printf("Succeed to open the file!\n");
 
     unsigned long long int sentBytes = 0;
+    size_t packetsSent = 0; // For diagnostic
+
+    unsigned long long int sentBytes = 0;
     while (sentBytes < bytesToTransfer && fread(buffer, 1, BUFFER_SIZE, fp) > 0) {
 
         ssize_t toSend = (bytesToTransfer - sentBytes < BUFFER_SIZE) ? bytesToTransfer - sentBytes : BUFFER_SIZE;
@@ -61,10 +68,14 @@ void rsend(char* hostname, unsigned short int hostUDPport, char* filename, unsig
         } 
         
         sentBytes += sent;
+        packetsSent++;
+        nanosleep(&req, (struct timespec *)NULL); // Delay between sends
 
     }
 
     sendto(sockfd, NULL, 0, 0, (const struct sockaddr *) &servaddr, sizeof(servaddr));
+
+    printf("Packets sent: %zu\n", packetsSent);
 
     fclose(fp);
     close(sockfd);

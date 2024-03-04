@@ -49,6 +49,9 @@ void rrecv(unsigned short int myUDPport, char* destinationFile, unsigned long lo
         sleepDuration.tv_nsec = (long)(BUFFER_SIZE / bytesPerNanoSecond);
     }
 
+    unsigned long long int receivedBytes = 0; // Track received bytes
+    size_t packetsReceived = 0; // For diagnostic
+
     socklen_t len = sizeof(cliaddr);
     ssize_t n;
     while (1) {
@@ -63,6 +66,9 @@ void rrecv(unsigned short int myUDPport, char* destinationFile, unsigned long lo
             break;
         }
 
+        packetsReceived++;
+        receivedBytes += n;
+
         if (fwrite(buffer, 1, n, fp) != n) {
             perror("Failed to write to file");
             break;
@@ -75,13 +81,16 @@ void rrecv(unsigned short int myUDPport, char* destinationFile, unsigned long lo
 
     }
 
+    printf("Total received bytes: %llu\n", receivedBytes); // Print received bytes for diagnostics
+    printf("Packets received: %zu\n", packetsReceived);
+
     fclose(fp);
     close(sockfd);
 
 }
 
 int main(int argc, char** argv) {
-    
+
     if (argc != 4) {
         fprintf(stderr, "Usage: %s <UDP port> <destination file> <write rate>\n", argv[0]);
         return 1;
@@ -94,4 +103,5 @@ int main(int argc, char** argv) {
     rrecv(udpPort, destinationFile, writeRate);
 
     return 0;
+
 }

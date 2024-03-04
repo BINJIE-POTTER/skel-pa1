@@ -80,6 +80,7 @@ rsend(char* hostname, unsigned short int hostUDPport, char* filename, unsigned l
         perror("get ipv4 address failed");
         exit(EXIT_FAILURE);
     }
+    printf("IPv4: %s\n", ipv4);
 
     int addrResult = inet_pton(AF_INET, ipv4, &servaddr.sin_addr);
     if (addrResult <= 0) {

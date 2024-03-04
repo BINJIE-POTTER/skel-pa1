@@ -19,10 +19,6 @@ void rsend(char* hostname, unsigned short int hostUDPport, char* filename, unsig
     struct sockaddr_in servaddr;
     FILE *fp;
     char buffer[BUFFER_SIZE];
-    struct timespec req = {0}; // For introducing delay
-    
-    req.tv_sec = 0;
-    req.tv_nsec = 10 * 1000000L; // 10 milliseconds delay
 
     printf("Hostname: %s\n", hostname);
     printf("UDP Port: %hu\n", hostUDPport);
@@ -68,7 +64,6 @@ void rsend(char* hostname, unsigned short int hostUDPport, char* filename, unsig
         
         sentBytes += sent;
         packetsSent++;
-        nanosleep(&req, (struct timespec *)NULL); // Delay between sends
 
     }
 

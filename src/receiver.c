@@ -51,33 +51,37 @@ void rrecv(unsigned short int myUDPport, char* destinationFile, unsigned long lo
 
     socklen_t len = sizeof(cliaddr);
     ssize_t n;
+    while (1) {
 
-    printf("Start receiving...\n");
+        n = recvfrom(sockfd, buffer, BUFFER_SIZE, 0, (struct sockaddr *) &cliaddr, &len);
 
-    while ((n = recvfrom(sockfd, buffer, BUFFER_SIZE, 0, (struct sockaddr *) &cliaddr, &len)) > 0) {
+        if (n == -1) {
+            perror("recvfrom failed");
+            break;
+        } else if (n == 0) {
+            printf("Termination packet received. Ending reception.\n");
+            break;
+        }
 
-        // printf("Received %zd bytes, writing...\n", n);
-
-        size_t written = fwrite(buffer, 1, n, fp);
-        if (written < n) {
+        if (fwrite(buffer, 1, n, fp) != n) {
             perror("Failed to write to file");
-            break; // Or handle the error appropriately
+            break;
         }
         fflush(fp);
 
-        // Implement write rate control
         if (writeRate > 0) {
             nanosleep(&sleepDuration, NULL);
         }
+
     }
 
     fclose(fp);
     close(sockfd);
 
-    printf("END\n");
 }
 
 int main(int argc, char** argv) {
+    
     if (argc != 4) {
         fprintf(stderr, "Usage: %s <UDP port> <destination file> <write rate>\n", argv[0]);
         return 1;

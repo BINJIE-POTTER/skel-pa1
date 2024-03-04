@@ -13,29 +13,8 @@
 
 #define BUFFER_SIZE 1024 // Adjust based on expected MTU
 
-// void rrecv(unsigned short int myUDPport, 
-//             char* destinationFile, 
-//             unsigned long long int writeRate) {
-
-// }
-
-// int main(int argc, char** argv) {
-//     // This is a skeleton of a main function.
-//     // You should implement this function more completely
-//     // so that one can invoke the file transfer from the
-//     // command line.
-
-//     unsigned short int udpPort;
-
-//     if (argc != 3) {
-//         fprintf(stderr, "usage: %s UDP_port filename_to_write\n\n", argv[0]);
-//         exit(1);
-//     }
-
-//     udpPort = (unsigned short int) atoi(argv[1]);
-// }
-
 void rrecv(unsigned short int myUDPport, char* destinationFile, unsigned long long int writeRate) {
+    
     int sockfd;
     struct sockaddr_in servaddr, cliaddr;
     char buffer[BUFFER_SIZE];
@@ -77,7 +56,7 @@ void rrecv(unsigned short int myUDPport, char* destinationFile, unsigned long lo
 
     while ((n = recvfrom(sockfd, buffer, BUFFER_SIZE, 0, (struct sockaddr *) &cliaddr, &len)) > 0) {
 
-        printf("Received %zd bytes, writing...\n", n);
+        // printf("Received %zd bytes, writing...\n", n);
 
         size_t written = fwrite(buffer, 1, n, fp);
         if (written < n) {
@@ -96,7 +75,6 @@ void rrecv(unsigned short int myUDPport, char* destinationFile, unsigned long lo
     close(sockfd);
 
     printf("END\n");
-
 }
 
 int main(int argc, char** argv) {

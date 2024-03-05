@@ -121,7 +121,6 @@ rrecvACK(void* args) {
         }
 
         if (ack == -1) break;
-        else printf("ACK received: %u", ack);
 
         pthread_mutex_lock(&lock);
 

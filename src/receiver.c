@@ -50,6 +50,10 @@ void rrecv(unsigned short int myUDPport, char* destinationFile, unsigned long lo
     servaddr.sin_addr.s_addr = INADDR_ANY;
     servaddr.sin_port = htons(myUDPport);
 
+    memset(&cliaddr, 0, sizeof(cliaddr));
+    cliaddr.sin_family = AF_INET;
+    cliaddr.sin_addr.s_addr = INADDR_ANY;
+
     if (bind(sockfd, (const struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
         perror("bind failed");
         exit(EXIT_FAILURE);
@@ -131,6 +135,8 @@ void rrecv(unsigned short int myUDPport, char* destinationFile, unsigned long lo
             }
             fflush(fp);
 
+            printf("Message sent to %s:%d\n", inet_ntoa(cliaddr.sin_addr), ntohs(cliaddr.sin_port));
+
             unsigned int ack = packet.index;
             if (sendto(sockfd, &ack, sizeof(ack), 0, (struct sockaddr *)&cliaddr, len) < 0) {
                 perror("sendto failed");
@@ -149,9 +155,9 @@ void rrecv(unsigned short int myUDPport, char* destinationFile, unsigned long lo
     for (int i = 0; i < 20; i++) {
 
         if (sendto(sockfd, &ack, sizeof(ack), 0, (const struct sockaddr *)&cliaddr, len) < 0) {
-            perror("Failed to send file");
+            perror("Failed to send termination");
             break;
-        } else {printf("sent ack\n");}
+        }
 
     }
 

@@ -200,7 +200,7 @@ rsend(char* hostname, unsigned short int hostUDPport, char* filename, unsigned l
                 fseek(fp, position, SEEK_SET);
 
                 size_t readSize = fread(packet.data, 1, packetDataSize, fp);
-                if (readSize < packetSize && !feof(fp)) {
+                if (readSize < packetDataSize && !feof(fp)) {
                     perror("Failed to read file");
                     pthread_mutex_unlock(&lock);
                     break;

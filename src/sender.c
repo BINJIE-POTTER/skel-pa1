@@ -193,13 +193,13 @@ rsend(char* hostname, unsigned short int hostUDPport, char* filename, unsigned l
                 Packet packet;
                 packet.index = index;
 
-                size_t packetSize = (index == ARRAY_SIZE - 1 && lastPacketSize != 0) ? lastPacketSize : BUFFER_SIZE;
-                packet.data = malloc(packetSize);
+                size_t packetDataSize = (index == ARRAY_SIZE - 1 && lastPacketSize != 0) ? lastPacketSize : BUFFER_SIZE;
+                packet.data = malloc(packetDataSize);
 
                 off_t position = (off_t)index * BUFFER_SIZE;
                 fseek(fp, position, SEEK_SET);
 
-                size_t readSize = fread(packet.data, 1, packetSize, fp);
+                size_t readSize = fread(packet.data, 1, packetDataSize, fp);
                 if (readSize < packetSize && !feof(fp)) {
                     perror("Failed to read file");
                     pthread_mutex_unlock(&lock);
@@ -212,6 +212,8 @@ rsend(char* hostname, unsigned short int hostUDPport, char* filename, unsigned l
                     pthread_mutex_unlock(&lock);
                     break;
                 }
+
+                free(packet.data);
 
             }
 

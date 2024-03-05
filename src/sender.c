@@ -41,6 +41,7 @@ typedef struct {
 pthread_mutex_t lock;
 bool *array;
 size_t ARRAY_SIZE;
+volatile bool receiverFinished = false;
 
 char* 
 getIPv4(char* hostname) {
@@ -125,6 +126,8 @@ rrecvACK(void* args) {
 
     }
 
+    receiverFinished = true; 
+
     printf("All packets have been received.\n");
 
     close(sockfd);
@@ -195,8 +198,7 @@ rsend(char* hostname, unsigned short int hostUDPport, char* filename, unsigned l
 
     printf("Succeed to open the file!\n");
 
-    bool allAcknowledged = false;
-    while (!allAcknowledged) {
+    while (!receiverFinished) {
 
         for (unsigned int index = 0; index < ARRAY_SIZE; ++index) {
 
@@ -225,15 +227,6 @@ rsend(char* hostname, unsigned short int hostUDPport, char* filename, unsigned l
 
             pthread_mutex_unlock(&lock);
 
-        }
-
-        allAcknowledged = true;
-
-        for (int i = 0; i < ARRAY_SIZE; ++i) {
-            if (array[i] == false) {
-                allAcknowledged = false;
-                break;
-            }
         }
 
     }

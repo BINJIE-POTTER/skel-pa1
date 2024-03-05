@@ -108,12 +108,8 @@ void rrecv(unsigned short int myUDPport, char* destinationFile, unsigned long lo
     while (packetsReceived != packetsLength) {
 
         n = recvfrom(sockfd, &packet, sizeof(packet), 0, (struct sockaddr *) &cliaddr, &len);
-
         if (n == -1) {
             perror("recvfrom failed");
-            break;
-        } else if (n == 0) {
-            printf("Termination packet received. Ending reception.\n");
             break;
         }
 
@@ -136,7 +132,7 @@ void rrecv(unsigned short int myUDPport, char* destinationFile, unsigned long lo
             fflush(fp);
 
             unsigned int ack = packet.index;
-            if (sendto(sockfd, &ack, sizeof(ack), 0, (struct sockaddr *)&cliaddr, &len) < 0) {
+            if (sendto(sockfd, &ack, sizeof(ack), 0, (struct sockaddr *)&cliaddr, len) < 0) {
                 perror("sendto failed");
                 break;
             }
@@ -152,7 +148,7 @@ void rrecv(unsigned short int myUDPport, char* destinationFile, unsigned long lo
     unsigned int ack = -1;
     for (int i = 0; i < 20; i++) {
 
-        if (sendto(sockfd, &ack, sizeof(ack), 0, (const struct sockaddr *) &cliaddr, len) < 0) {
+        if (sendto(sockfd, &ack, sizeof(ack), 0, (const struct sockaddr *)&cliaddr, len) < 0) {
             perror("Failed to send file");
             break;
         } 

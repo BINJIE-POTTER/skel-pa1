@@ -107,6 +107,8 @@ rrecvACK(void* args) {
         exit(EXIT_FAILURE);
     }
 
+    printf("start receiving ack./n");
+
     ssize_t n;
     while (1) {
 

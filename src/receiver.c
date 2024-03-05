@@ -135,8 +135,6 @@ void rrecv(unsigned short int myUDPport, char* destinationFile, unsigned long lo
             }
             fflush(fp);
 
-            printf("Message sent to %s:%d\n", inet_ntoa(cliaddr.sin_addr), ntohs(cliaddr.sin_port));
-
             unsigned int ack = packet.index;
             if (sendto(sockfd, &ack, sizeof(ack), 0, (struct sockaddr *)&cliaddr, len) < 0) {
                 perror("sendto failed");

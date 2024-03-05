@@ -94,8 +94,8 @@ rrecvACK(void* args) {
         exit(EXIT_FAILURE);
     }
 
-    int bufferSize = 2 * 1024 * 1024;
-    setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &bufferSize, sizeof(bufferSize));
+    // int bufferSize = 2 * 1024 * 1024;
+    // setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &bufferSize, sizeof(bufferSize));
 
     memset(&recvaddr, 0, sizeof(recvaddr));
     recvaddr.sin_family = AF_INET;
@@ -111,8 +111,6 @@ rrecvACK(void* args) {
 
     ssize_t n;
     while (1) {
-
-        printf("receiving...\n");
 
         n = recvfrom(sockfd, &ack, sizeof(ack), 0, (struct sockaddr *)&senderaddr, &senderaddrlen);
         if (n < 0) {
@@ -209,8 +207,6 @@ rsend(char* hostname, unsigned short int hostUDPport, char* filename, unsigned l
             pthread_mutex_lock(&lock);
 
             if (!array[index]) {
-
-                printf("index: %u\n", index);
 
                 Packet packet;
                 packet.index = index;

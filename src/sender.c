@@ -207,7 +207,7 @@ rsend(char* hostname, unsigned short int hostUDPport, char* filename, unsigned l
 
         for (unsigned int index = 0; index < ARRAY_SIZE; ++index) {
 
-            //pthread_mutex_lock(&lock);
+            pthread_mutex_lock(&lock);
 
             if (!array[index]) {
 
@@ -232,7 +232,7 @@ rsend(char* hostname, unsigned short int hostUDPport, char* filename, unsigned l
 
             }
 
-            //pthread_mutex_unlock(&lock);
+            pthread_mutex_unlock(&lock);
 
         }
 

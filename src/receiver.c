@@ -151,7 +151,7 @@ void rrecv(unsigned short int myUDPport, char* destinationFile, unsigned long lo
         if (sendto(sockfd, &ack, sizeof(ack), 0, (const struct sockaddr *)&cliaddr, len) < 0) {
             perror("Failed to send file");
             break;
-        } 
+        } else {printf("sent ack\n");}
 
     }
 

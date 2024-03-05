@@ -30,7 +30,7 @@ typedef struct {
 
 typedef struct {
     unsigned int index;
-    char* data;
+    char data[BUFFER_SIZE];
 } Packet;
 
 typedef struct {
@@ -194,8 +194,7 @@ rsend(char* hostname, unsigned short int hostUDPport, char* filename, unsigned l
                 packet.index = index;
 
                 size_t packetDataSize = (index == ARRAY_SIZE - 1 && lastPacketSize != 0) ? lastPacketSize : BUFFER_SIZE;
-                packet.data = malloc(packetDataSize);
-
+                
                 off_t position = (off_t)index * BUFFER_SIZE;
                 fseek(fp, position, SEEK_SET);
 
@@ -206,14 +205,12 @@ rsend(char* hostname, unsigned short int hostUDPport, char* filename, unsigned l
                     break;
                 }
 
-                sent = sendto(sockfd, &packet, sizeof(packet), 0, (const struct sockaddr *) &servaddr, sizeof(servaddr));
+                sent = sendto(sockfd, &packet, sizeof(packet.index) + readSize, 0, (const struct sockaddr *)&servaddr, sizeof(servaddr));
                 if (sent < 0) {
                     perror("Failed to send file");
                     pthread_mutex_unlock(&lock);
                     break;
                 }
-
-                free(packet.data);
 
             }
 

@@ -30,7 +30,7 @@ typedef struct {
 
 typedef struct {
     unsigned int index;
-    char data[BUFFER_SIZE];
+    char* data;
 } Packet;
 
 typedef struct {
@@ -193,13 +193,11 @@ rsend(char* hostname, unsigned short int hostUDPport, char* filename, unsigned l
                 Packet packet;
                 packet.index = index;
 
-                size_t packetSize = BUFFER_SIZE;
+                size_t packetSize = (index == ARRAY_SIZE - 1 && lastPacketSize != 0) ? lastPacketSize : BUFFER_SIZE;
+                packet.data = malloc(packetSize);
+
                 off_t position = (off_t)index * BUFFER_SIZE;
                 fseek(fp, position, SEEK_SET);
-
-                if (index == ARRAY_SIZE - 1 && lastPacketSize != 0) {
-                    packetSize = lastPacketSize;
-                }
 
                 size_t readSize = fread(packet.data, 1, packetSize, fp);
                 if (readSize < packetSize && !feof(fp)) {

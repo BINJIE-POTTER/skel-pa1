@@ -106,9 +106,8 @@ rrecvACK(void* args) {
         exit(EXIT_FAILURE);
     }
 
-    bool allAcknowledged = false;
     ssize_t n;
-    while (!allAcknowledged) {
+    while (1) {
 
         n = recvfrom(sockfd, &ack, sizeof(ack), 0, (struct sockaddr *)&senderaddr, &senderaddrlen);
         if (n < 0) {
@@ -116,22 +115,17 @@ rrecvACK(void* args) {
             exit(EXIT_FAILURE);
         }
 
+        if (ack == -1) break;
+
         pthread_mutex_lock(&lock);
 
         array[ack] = true;
 
         pthread_mutex_unlock(&lock);
 
-        allAcknowledged = true;
-
-        for (int i = 0; i < ARRAY_SIZE; ++i) {
-            if (array[i] == false) {
-                allAcknowledged = false;
-                break;
-            }
-        }
-
     }
+
+    printf("All packets have been received.\n");
 
     close(sockfd);
 
@@ -277,6 +271,8 @@ main(int argc, char** argv) {
     for (int i = 0; i < ARRAY_SIZE; ++i) {
         array[i] = false;
     }
+
+    printf("Packests going to send: %zu\n", ARRAY_SIZE);
 
     RSendArgs sendArgs = {
         .hostname = argv[1],

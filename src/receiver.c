@@ -11,7 +11,10 @@
 #include <pthread.h>
 #include <errno.h>
 
-#define BUFFER_SIZE 1024 // Adjust based on expected MTU
+#include <math.h>
+#include <stdbool.h>
+
+#define BUFFER_SIZE 1024
 #define PACKET_DATA_SIZE (BUFFER_SIZE - sizeof(unsigned int))
 
 typedef struct {
@@ -23,6 +26,9 @@ typedef struct {
     unsigned int index; // -1 means heading package
     size_t packetNum; // Total number of packets
 } InfoPacket;
+
+bool *array;
+size_t ARRAY_SIZE;
 
 void rrecv(unsigned short int myUDPport, char* destinationFile, unsigned long long int writeRate) {
     
@@ -78,6 +84,16 @@ void rrecv(unsigned short int myUDPport, char* destinationFile, unsigned long lo
 
             packetsLength = infoPacket.packetNum;
 
+            ARRAY_SIZE = packetsLength;
+            array = malloc(ARRAY_SIZE * sizeof(bool));
+            if (array == NULL) {
+                fprintf(stderr, "Failed to allocate memory for the array.\n");
+                return;
+            }
+            for (int i = 0; i < ARRAY_SIZE; ++i) {
+                array[i] = false;
+            }
+
             break;
 
         }
@@ -101,10 +117,11 @@ void rrecv(unsigned short int myUDPport, char* destinationFile, unsigned long lo
             break;
         }
 
-        if (packet.index != -1) {
+        if (packet.index != -1 && !array[packet.index]) {
 
             packetsReceived++;
             receivedBytes += n;
+            array[packet.index] = true;
 
             off_t position = (off_t)packet.index * PACKET_DATA_SIZE;
             if (fseek(fp, position, SEEK_SET) != 0) {
@@ -132,9 +149,20 @@ void rrecv(unsigned short int myUDPport, char* destinationFile, unsigned long lo
 
     }
 
-    printf("Total received bytes: %llu\n", receivedBytes); // Print received bytes for diagnostics
+    unsigned int ack = -1;
+    for (int i = 0; i < 20; i++) {
+
+        if (sendto(sockfd, &ack, sizeof(ack), 0, (const struct sockaddr *) &servaddr, sizeof(servaddr)) < 0) {
+            perror("Failed to send file");
+            break;
+        } 
+
+    }
+
+    printf("Total received bytes: %llu\n", receivedBytes);
     printf("Packets received: %zu\n", packetsReceived);
 
+    free(array);
     fclose(fp);
     close(sockfd);
 

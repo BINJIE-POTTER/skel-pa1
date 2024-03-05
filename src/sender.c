@@ -80,8 +80,6 @@ getIPv4(char* hostname) {
 void*
 rrecvACK(void* args) {
 
-    printf("entering rrecvACK\n");
-
     RRecvACKArgs* recvArgs = (RRecvACKArgs*)args;
     unsigned short int hostUDPport = recvArgs->hostUDPport;
 
@@ -95,8 +93,6 @@ rrecvACK(void* args) {
         perror("socket creation failed");
         exit(EXIT_FAILURE);
     }
-
-    printf("A\n");
 
     int bufferSize = 2 * 1024 * 1024;
     setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &bufferSize, sizeof(bufferSize));
@@ -211,9 +207,11 @@ rsend(char* hostname, unsigned short int hostUDPport, char* filename, unsigned l
 
         for (unsigned int index = 0; index < ARRAY_SIZE; ++index) {
 
-            pthread_mutex_lock(&lock);
+            //pthread_mutex_lock(&lock);
 
             if (!array[index]) {
+
+                printf("index: %u\n", index);
 
                 Packet packet;
                 packet.index = index;
@@ -234,7 +232,7 @@ rsend(char* hostname, unsigned short int hostUDPport, char* filename, unsigned l
 
             }
 
-            pthread_mutex_unlock(&lock);
+            //pthread_mutex_unlock(&lock);
 
         }
 

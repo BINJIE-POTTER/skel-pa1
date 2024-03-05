@@ -80,7 +80,7 @@ getIPv4(char* hostname) {
 void*
 rrecvACK(void* args) {
 
-    printf("entering rrecvACK/n");
+    printf("entering rrecvACK\n");
 
     RRecvACKArgs* recvArgs = (RRecvACKArgs*)args;
     unsigned short int hostUDPport = recvArgs->hostUDPport;
@@ -96,6 +96,8 @@ rrecvACK(void* args) {
         exit(EXIT_FAILURE);
     }
 
+    printf("A\n");
+
     int bufferSize = 2 * 1024 * 1024;
     setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &bufferSize, sizeof(bufferSize));
 
@@ -109,7 +111,7 @@ rrecvACK(void* args) {
         exit(EXIT_FAILURE);
     }
 
-    printf("start receiving ack./n");
+    printf("start receiving ack.\n");
 
     ssize_t n;
     while (1) {

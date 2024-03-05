@@ -103,7 +103,6 @@ void rrecv(unsigned short int myUDPport, char* destinationFile, unsigned long lo
 
     }
 
-    unsigned long long int receivedBytes = 0; // Track received bytes
     size_t packetsReceived = 0;
     Packet packet;
     while (packetsReceived != packetsLength) {
@@ -117,7 +116,6 @@ void rrecv(unsigned short int myUDPport, char* destinationFile, unsigned long lo
         if (packet.index != -1 && !array[packet.index]) {
 
             packetsReceived++;
-            receivedBytes += n - sizeof(packet.index);
             array[packet.index] = true;
 
             off_t position = (off_t)packet.index * BUFFER_SIZE;

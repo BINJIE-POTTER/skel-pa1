@@ -136,7 +136,7 @@ void rrecv(unsigned short int myUDPport, char* destinationFile, unsigned long lo
             fflush(fp);
 
             unsigned int ack = packet.index;
-            if (sendto(sockfd, &ack, sizeof(ack), 0, (struct sockaddr *)&cliaddr, len) < 0) {
+            if (sendto(sockfd, &ack, sizeof(ack), 0, (struct sockaddr *)&cliaddr, &len) < 0) {
                 perror("sendto failed");
                 break;
             }

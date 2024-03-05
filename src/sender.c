@@ -43,7 +43,7 @@ bool *array;
 size_t ARRAY_SIZE;
 volatile bool receiverFinished = false;
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-
+size_t lastPacketSize;
 
 char* 
 getIPv4(char* hostname) {
@@ -144,11 +144,6 @@ rsend(char* hostname, unsigned short int hostUDPport, char* filename, unsigned l
     char* ipv4;
     ssize_t sent;
 
-    printf("Hostname: %s\n", hostname);
-    printf("UDP Port: %hu\n", hostUDPport);
-    printf("File to send: %s\n", filename);
-    printf("Bytes to transfer: %llu\n", bytesToTransfer);
-
     int bufferSize = 2 * 1024 * 1024;
     setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &bufferSize, sizeof(bufferSize));
 
@@ -161,7 +156,6 @@ rsend(char* hostname, unsigned short int hostUDPport, char* filename, unsigned l
         perror("get ipv4 address failed");
         exit(EXIT_FAILURE);
     }
-    printf("IPv4: %s\n", ipv4);
 
     int addrResult = inet_pton(AF_INET, ipv4, &servaddr.sin_addr);
     if (addrResult <= 0) {
@@ -188,8 +182,6 @@ rsend(char* hostname, unsigned short int hostUDPport, char* filename, unsigned l
         exit(EXIT_FAILURE);
     }
 
-    printf("Succeed to open the file!\n");
-
     while (!receiverFinished) {
 
         for (unsigned int index = 0; index < ARRAY_SIZE; ++index) {
@@ -201,17 +193,25 @@ rsend(char* hostname, unsigned short int hostUDPport, char* filename, unsigned l
                 Packet packet;
                 packet.index = index;
 
+                size_t packetSize = BUFFER_SIZE;
                 off_t position = (off_t)index * BUFFER_SIZE;
                 fseek(fp, position, SEEK_SET);
 
-                if (fread(packet.data, 1, BUFFER_SIZE, fp) <= 0) {
+                if (index == ARRAY_SIZE - 1 && lastPacketSize != 0) {
+                    packetSize = lastPacketSize;
+                }
+
+                size_t readSize = fread(packet.data, 1, packetSize, fp);
+                if (readSize < packetSize && !feof(fp)) {
                     perror("Failed to read file");
+                    pthread_mutex_unlock(&lock);
                     break;
                 }
 
                 sent = sendto(sockfd, &packet, sizeof(packet), 0, (const struct sockaddr *) &servaddr, sizeof(servaddr));
                 if (sent < 0) {
                     perror("Failed to send file");
+                    pthread_mutex_unlock(&lock);
                     break;
                 }
 
@@ -263,6 +263,8 @@ main(int argc, char** argv) {
         perror("socket creation failed");
         exit(EXIT_FAILURE);
     }
+
+    lastPacketSize = atoll(argv[4]) % BUFFER_SIZE;
 
     RSendArgs sendArgs = {
         .hostname = argv[1],

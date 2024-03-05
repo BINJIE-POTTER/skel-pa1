@@ -117,7 +117,7 @@ void rrecv(unsigned short int myUDPport, char* destinationFile, unsigned long lo
         if (packet.index != -1 && !array[packet.index]) {
 
             packetsReceived++;
-            receivedBytes += n;
+            receivedBytes += n - sizeof(packet.index);
             array[packet.index] = true;
 
             off_t position = (off_t)packet.index * PACKET_DATA_SIZE;

@@ -38,10 +38,12 @@ typedef struct {
     size_t packetNum; // Total number of packets
 } InfoPacket;
 
-pthread_mutex_t lock;
+int sockfd;
 bool *array;
 size_t ARRAY_SIZE;
 volatile bool receiverFinished = false;
+pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+
 
 char* 
 getIPv4(char* hostname) {
@@ -78,36 +80,31 @@ getIPv4(char* hostname) {
 }
 
 void*
-rrecvACK(void* args) {
+rrecvACK() {
 
-    RRecvACKArgs* recvArgs = (RRecvACKArgs*)args;
-    unsigned short int hostUDPport = recvArgs->hostUDPport;
-
-    int sockfd;
     struct sockaddr_in recvaddr, senderaddr;
     socklen_t senderaddrlen = sizeof(senderaddr);
     unsigned int ack;
 
-    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (sockfd < 0) {
-        perror("socket creation failed");
+    struct sockaddr_in localAddr;
+    socklen_t addrLen = sizeof(localAddr);
+    if (getsockname(sockfd, (struct sockaddr *)&localAddr, &addrLen) == -1) {
+        perror("getsockname() failed");
         exit(EXIT_FAILURE);
     }
 
-    // int bufferSize = 2 * 1024 * 1024;
-    // setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &bufferSize, sizeof(bufferSize));
+    int bufferSize = 2 * 1024 * 1024;
+    setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &bufferSize, sizeof(bufferSize));
 
     memset(&recvaddr, 0, sizeof(recvaddr));
     recvaddr.sin_family = AF_INET;
     recvaddr.sin_addr.s_addr = INADDR_ANY;
-    recvaddr.sin_port = htons(hostUDPport);
+    recvaddr.sin_port = localAddr.sin_port;
 
     if (bind(sockfd, (const struct sockaddr *)&recvaddr, sizeof(recvaddr)) < 0) {
         perror("bind failed");
         exit(EXIT_FAILURE);
     }
-
-    printf("start receiving ack.\n");
 
     ssize_t n;
     while (1) {
@@ -142,7 +139,6 @@ rrecvACK(void* args) {
 void 
 rsend(char* hostname, unsigned short int hostUDPport, char* filename, unsigned long long int bytesToTransfer) {
     
-    int sockfd;
     struct sockaddr_in servaddr;
     FILE *fp;
     char* ipv4;
@@ -152,12 +148,6 @@ rsend(char* hostname, unsigned short int hostUDPport, char* filename, unsigned l
     printf("UDP Port: %hu\n", hostUDPport);
     printf("File to send: %s\n", filename);
     printf("Bytes to transfer: %llu\n", bytesToTransfer);
-
-    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (sockfd < 0) {
-        perror("socket creation failed");
-        exit(EXIT_FAILURE);
-    }
 
     int bufferSize = 2 * 1024 * 1024;
     setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &bufferSize, sizeof(bufferSize));
@@ -257,8 +247,6 @@ main(int argc, char** argv) {
         return 1;
     }
 
-    pthread_mutex_init(&lock, NULL);
-
     ARRAY_SIZE = (size_t) ceil((double)atoll(argv[4]) / BUFFER_SIZE);
     array = malloc(ARRAY_SIZE * sizeof(bool));
     if (array == NULL) {
@@ -268,8 +256,13 @@ main(int argc, char** argv) {
     for (int i = 0; i < ARRAY_SIZE; ++i) {
         array[i] = false;
     }
-
     printf("Packets going to send: %zu\n", ARRAY_SIZE);
+
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd < 0) {
+        perror("socket creation failed");
+        exit(EXIT_FAILURE);
+    }
 
     RSendArgs sendArgs = {
         .hostname = argv[1],
@@ -278,16 +271,12 @@ main(int argc, char** argv) {
         .bytesToTransfer = atoll(argv[4])
     };
 
-    RRecvACKArgs recvACKArgs = { .hostUDPport = (unsigned short int)atoi(argv[2]) };
-
     pthread_t sendThread, recvACKThread;
     pthread_create(&sendThread, NULL, rsendHelper, &sendArgs);
-    pthread_create(&recvACKThread, NULL, rrecvACK, &recvACKArgs);
+    pthread_create(&recvACKThread, NULL, rrecvACK, NULL);
 
     pthread_join(sendThread, NULL);
-    printf("sendThread joined\n");
     pthread_join(recvACKThread, NULL);
-    printf("recvACKThread joined\n");
 
     printf("MAIN END\n");
 

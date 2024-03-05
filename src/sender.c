@@ -80,6 +80,8 @@ getIPv4(char* hostname) {
 void*
 rrecvACK(void* args) {
 
+    printf("entering rrecvACK/n");
+
     RRecvACKArgs* recvArgs = (RRecvACKArgs*)args;
     unsigned short int hostUDPport = recvArgs->hostUDPport;
 
@@ -285,7 +287,9 @@ main(int argc, char** argv) {
     pthread_create(&recvACKThread, NULL, rrecvACK, &recvACKArgs);
 
     pthread_join(sendThread, NULL);
+    printf("sendThread joined\n");
     pthread_join(recvACKThread, NULL);
+    printf("recvACKThread joined\n");
 
     printf("MAIN END\n");
 

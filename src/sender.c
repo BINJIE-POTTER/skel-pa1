@@ -127,8 +127,6 @@ rrecvACK() {
 
     receiverFinished = true; 
 
-    printf("All packets have been received.\n");
-
     close(sockfd);
 
     return NULL;
@@ -220,8 +218,6 @@ rsend(char* hostname, unsigned short int hostUDPport, char* filename, unsigned l
 
     }
 
-    printf("rsend finished\n");
-
     fclose(fp);
     close(sockfd);
 
@@ -253,7 +249,6 @@ main(int argc, char** argv) {
     for (int i = 0; i < ARRAY_SIZE; ++i) {
         array[i] = false;
     }
-    printf("Packets going to send: %zu\n", ARRAY_SIZE);
 
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (sockfd < 0) {
@@ -276,8 +271,6 @@ main(int argc, char** argv) {
 
     pthread_join(sendThread, NULL);
     pthread_join(recvACKThread, NULL);
-
-    printf("MAIN END\n");
 
     free(array);
     pthread_mutex_destroy(&lock);

@@ -116,6 +116,8 @@ rrecvACK(void* args) {
     ssize_t n;
     while (1) {
 
+        printf("receiving...\n");
+
         n = recvfrom(sockfd, &ack, sizeof(ack), 0, (struct sockaddr *)&senderaddr, &senderaddrlen);
         if (n < 0) {
             perror("recvfrom failed");

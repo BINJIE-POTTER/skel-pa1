@@ -15,7 +15,6 @@
 #include <stdbool.h>
 
 #define BUFFER_SIZE 1024
-#define PACKET_DATA_SIZE (BUFFER_SIZE - sizeof(unsigned int))
 
 typedef struct {
     unsigned int index;
@@ -120,7 +119,7 @@ void rrecv(unsigned short int myUDPport, char* destinationFile, unsigned long lo
             receivedBytes += n - sizeof(packet.index);
             array[packet.index] = true;
 
-            off_t position = (off_t)packet.index * PACKET_DATA_SIZE;
+            off_t position = (off_t)packet.index * BUFFER_SIZE;
             if (fseek(fp, position, SEEK_SET) != 0) {
                 perror("Failed to seek in file");
                 break;

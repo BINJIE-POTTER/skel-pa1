@@ -113,6 +113,8 @@ void rrecv(unsigned short int myUDPport, char* destinationFile, unsigned long lo
             break;
         }
 
+        printf("cliaddr: %s\n", inet_ntoa(cliaddr.sin_addr));
+
         if (packet.index != -1 && !array[packet.index]) {
 
             packetsReceived++;

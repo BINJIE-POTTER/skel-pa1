@@ -231,6 +231,8 @@ rsend(char* hostname, unsigned short int hostUDPport, char* filename, unsigned l
 
     }
 
+    printf("rsend finished\n");
+
     fclose(fp);
     close(sockfd);
 
@@ -255,7 +257,7 @@ main(int argc, char** argv) {
 
     pthread_mutex_init(&lock, NULL);
 
-    ARRAY_SIZE = (size_t) ceil((double)atoi(argv[2]) / BUFFER_SIZE);
+    ARRAY_SIZE = (size_t) ceil((double)atoll(argv[4]) / BUFFER_SIZE);
     array = malloc(ARRAY_SIZE * sizeof(bool));
     if (array == NULL) {
         fprintf(stderr, "Failed to allocate memory for the array.\n");
@@ -265,7 +267,7 @@ main(int argc, char** argv) {
         array[i] = false;
     }
 
-    printf("Packests going to send: %zu\n", ARRAY_SIZE);
+    printf("Packets going to send: %zu\n", ARRAY_SIZE);
 
     RSendArgs sendArgs = {
         .hostname = argv[1],

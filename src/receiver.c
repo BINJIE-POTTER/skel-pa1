@@ -101,6 +101,7 @@ void rrecv(unsigned short int myUDPport, char* destinationFile, unsigned long lo
     }
 
     printf("Total Packets: %zu\n", packetsLength);
+    printf("Packets going to receive: %zu\n", ARRAY_SIZE);
 
     unsigned long long int receivedBytes = 0; // Track received bytes
     size_t packetsReceived = 0;
